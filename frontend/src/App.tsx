@@ -30,6 +30,13 @@ export default function App() {
               <p>{result.reply_text}</p>
             </>
           )}
+          {result.reply_audio_path && (
+            <audio
+              controls
+              autoPlay
+              src={`http://localhost:5000/api/tts-file/${result.reply_audio_path}`}
+            />
+          )}
         </div>
       )}
     </div>

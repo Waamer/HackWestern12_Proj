@@ -42,8 +42,8 @@ soxr==1.0.0
 sympy==1.13.1
 threadpoolctl==3.6.0
 tokenizers==0.22.1
-torch==2.5.1+cu121
-torchaudio==2.5.1+cu121
+torch
+torchaudio
 tqdm==4.67.1
 transformers==4.57.1
 typing_extensions==4.15.0

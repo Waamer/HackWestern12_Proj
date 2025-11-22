@@ -55,6 +55,12 @@ export default function Recorder({ onResponse }: Props) {
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const buffersRef = useRef<Float32Array[]>([]);
 
+  const [transcript, setTranscript] = useState("");
+  const transcriptRef = useRef("");
+  const recognitionRef = useRef<any>(null);
+  const recognitionPromiseResolver = useRef<((value: unknown) => void) | null>(null);
+  const isRecordingRef = useRef(false); // Track recording state for auto-restart
+
   useEffect(() => {
     return () => {
       stopRecording();
@@ -62,32 +68,144 @@ export default function Recorder({ onResponse }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startRecording = async () => {
-    buffersRef.current = [];
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    const audioCtx = new AudioContextClass();
-    audioCtxRef.current = audioCtx;
-    const source = audioCtx.createMediaStreamSource(stream);
-    sourceRef.current = source;
+  const startSpeechRecognition = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("Web Speech API not supported in this browser.");
+      alert("Web Speech API not supported. Please use Chrome or Edge.");
+      return;
+    }
 
-    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-    processorRef.current = processor;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.maxAlternatives = 1;
 
-    processor.onaudioprocess = (e: AudioProcessingEvent) => {
-      const input = e.inputBuffer.getChannelData(0);
-      buffersRef.current.push(new Float32Array(input));
+    recognition.onresult = (event: any) => {
+      let interimTranscript = "";
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        transcriptRef.current += " " + finalTranscript;
+      }
+      // Update UI with current total + interim
+      setTranscript(transcriptRef.current + " " + interimTranscript);
     };
 
-    source.connect(processor);
-    processor.connect(audioCtx.destination); // needed in some browsers
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      // Don't restart on aborted (user stopped) or not-allowed (permissions)
+      if (event.error === 'aborted' || event.error === 'not-allowed') {
+        return;
+      }
+      // Auto-restart on other errors if still recording
+      if (isRecordingRef.current && recognitionRef.current) {
+        console.log("Auto-restarting speech recognition...");
+        setTimeout(() => {
+          if (isRecordingRef.current) {
+            try {
+              recognitionRef.current?.start();
+            } catch (e) {
+              console.error("Failed to restart recognition:", e);
+            }
+          }
+        }, 100);
+      }
+    };
 
-    setRecording(true);
+    recognition.onend = () => {
+      console.log("Speech recognition ended");
+      // Auto-restart if we're still recording
+      if (isRecordingRef.current && !recognitionPromiseResolver.current) {
+        console.log("Auto-restarting speech recognition (ended unexpectedly)...");
+        setTimeout(() => {
+          if (isRecordingRef.current) {
+            try {
+              recognitionRef.current?.start();
+            } catch (e) {
+              console.error("Failed to restart recognition:", e);
+            }
+          }
+        }, 100);
+      } else if (recognitionPromiseResolver.current) {
+        // User intentionally stopped
+        recognitionPromiseResolver.current(true);
+        recognitionPromiseResolver.current = null;
+      }
+    };
+
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      console.log("Speech recognition started");
+    } catch (err) {
+      console.error("Failed to start speech recognition:", err);
+    }
+  };
+
+  const startRecording = async () => {
+    setTranscript("");
+    transcriptRef.current = "";
+    buffersRef.current = [];
+    isRecordingRef.current = true;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioContextClass();
+      audioCtxRef.current = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      sourceRef.current = source;
+
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
+
+      processor.onaudioprocess = (e: AudioProcessingEvent) => {
+        const input = e.inputBuffer.getChannelData(0);
+        buffersRef.current.push(new Float32Array(input));
+      };
+
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
+
+      // Start Speech Recognition with auto-restart capability
+      startSpeechRecognition();
+
+      setRecording(true);
+    } catch (err) {
+      console.error("Error starting recording:", err);
+      alert("Could not access microphone. Please allow permissions.");
+      isRecordingRef.current = false;
+    }
   };
 
   const stopRecording = async () => {
     if (!recording) return;
     setRecording(false);
+    isRecordingRef.current = false;
+
+    // Stop Speech Recognition and wait for it to finish
+    if (recognitionRef.current) {
+      const stopPromise = new Promise((resolve) => {
+        recognitionPromiseResolver.current = resolve;
+      });
+      recognitionRef.current.stop();
+
+      // Wait a bit for the final result to process, but not too long
+      const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1000));
+      await Promise.race([stopPromise, timeoutPromise]);
+
+      recognitionRef.current = null;
+    }
 
     const processor = processorRef.current;
     const source = sourceRef.current;
@@ -98,7 +216,7 @@ export default function Recorder({ onResponse }: Props) {
       source.disconnect();
       try {
         processor.onaudioprocess = null;
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // concat buffers
@@ -117,12 +235,17 @@ export default function Recorder({ onResponse }: Props) {
     fd.append("audio", wavBlob, "clip.wav");
     fd.append("do_chat", "true");
 
+    const textToSend = transcriptRef.current.trim();
+    console.log("Sending transcript:", textToSend);
+    fd.append("transcript", textToSend);
+
     try {
       const res = await fetch("http://localhost:5000/api/analyze", {
         method: "POST",
         body: fd,
       });
       const data = await res.json();
+      console.log("Server response:", data);
       onResponse(data);
     } catch (err) {
       console.error("Upload error", err);
@@ -130,8 +253,10 @@ export default function Recorder({ onResponse }: Props) {
 
     // close audio context
     try {
-      await audioCtx.close();
-    } catch (e) {}
+      if (audioCtx) {
+        await audioCtx.close();
+      }
+    } catch (e) { }
     audioCtxRef.current = null;
     sourceRef.current = null;
     processorRef.current = null;
@@ -146,7 +271,13 @@ export default function Recorder({ onResponse }: Props) {
       <button onClick={stopRecording} disabled={!recording}>
         Stop
       </button>
-      <p>{recording ? "Recording..." : "Idle"}</p>
+      <p>{recording ? "Recording... (Speak now)" : "Idle"}</p>
+      {recording && (
+        <div style={{ marginTop: 10, padding: 10, border: "1px solid #ccc" }}>
+          <strong>Live Transcript:</strong>
+          <p>{transcript || "(Listening...)"}</p>
+        </div>
+      )}
     </div>
   );
 }
