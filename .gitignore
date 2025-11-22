@@ -1,0 +1,130 @@
+# General
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg
+lib64/
+__pypackages__/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Pytest / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# MyPy
+.mypy_cache/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Node / frontend
+node_modules/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tgz
+/.parcel-cache/
+/.turbo/
+
+# Vite build output
+/frontend/dist/
+/frontend/build/
+
+# Typescript
+*.tsbuildinfo
+
+# IDEs and editors
+*.swp
+*~
+.idea/
+.vscode/
+.history/
+
+# OS generated files
+ehthumbs.db
+Icon?
+._*
+
+# Audio & temp files produced by this project
+temp*.wav
+temp_*.wav
+response_*.wav
+response_from_*.wav
+*.cache
+*.tmp
+*.bak
+
+# Model artifacts and large binary files
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+/models/
+/checkpoints/
+/weights/
+
+# Hugging Face and dataset caches (if accidentally checked in locally)
+.cache/huggingface/
+.cache/huggingface_transformers/
+.cache/huggingface_cache/
+.cache/datasets/
+
+# Data files (large datasets)
+/data/
+/datasets/
+*.tar.gz
+*.zip
+
+# Environment / secrets
+.env
+*.env
+backend/.env
+.secrets/
+
+# Logs
+logs/
+*.log
+
+# Test and build outputs
+coverage/
+pytest_cache/

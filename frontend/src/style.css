@@ -1,0 +1,4 @@
+body { font-family: system-ui, sans-serif; padding: 20px; }
+.app { max-width: 800px; margin: 0 auto; }
+.recorder button { margin-right: 8px; padding: 8px 12px; }
+.results pre { background: #f6f8fa; padding: 8px; border-radius: 4px; }
