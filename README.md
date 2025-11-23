@@ -245,10 +245,3 @@ git add .gitattributes
 - For production deployment replace the Flask dev server with a WSGI production server (Gunicorn/uvicorn) and consider a reverse proxy.
 
 ---
-
-If you want, I can also:
-- Add a `start-dev.ps1` that opens two PowerShell windows for backend and frontend.
-- Add an `evaluate.py` helper to measure accuracy over a labeled folder of audio.
-- Add a small script to automate selecting and installing the correct PyTorch wheel for the detected GPU/CUDA.
-
-Tell me which of those you'd like next.
