@@ -40,7 +40,7 @@ Unlike text-only chatbots, Echoes captures emotional nuance in your voice—dete
 
 ---
 
-## 🎯 Why EmotiVoice?
+## 🎯 Why Echoes?
 
 ### The Mental Health Crisis
 - **1 in 5 adults** experience mental illness annually
@@ -48,14 +48,14 @@ Unlike text-only chatbots, Echoes captures emotional nuance in your voice—dete
 - **Cost barrier**: $100-250 per session without insurance
 - **Stigma** prevents many from seeking help
 
-### How EmotiVoice Helps
+### How Echoes Helps
 - ✅ **Immediate 24/7 support** - No waiting lists or appointments
 - ✅ **Emotion-aware responses** - Understands stress/fear in your voice even when you say "I'm fine"
 - ✅ **Judgment-free space** - Complete privacy and confidentiality
 - ✅ **Actionable guidance** - Practical advice tailored to your unique situation
 - ✅ **Crisis detection** - Recognizes urgent situations and recommends professional help
 
-> **Note:** EmotiVoice is a supportive companion, not a replacement for professional therapy. For serious mental health concerns, please consult a licensed professional.
+> **Note:** Echoes is a supportive companion, not a replacement for professional therapy. For serious mental health concerns, please consult a licensed professional.
 
 
 ---
@@ -184,7 +184,7 @@ The backend will run on `http://127.0.0.1:5000` (Flask dev server). Keep this ru
 
 ---
 
-## Optional: Real-time mic script (console)
+## Real-time mic script (console)
 
 This repo also includes a console mic loop (`real_time_emotion_server.py`) that captures short chunks with `sounddevice` and runs local emotion detection. To run it (venv active):
 
