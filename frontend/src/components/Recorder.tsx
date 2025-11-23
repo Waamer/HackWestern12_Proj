@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, PhoneOff, Phone } from "lucide-react";
+import { Mic, PhoneOff, Phone, HeartHandshake } from "lucide-react";
 import { Messages } from "./Messages";
 import { Visualizer } from "react-sound-visualizer";
+import LightRays from "./LightRays";
 
 interface Message {
   text: string;
@@ -69,7 +70,7 @@ export default function Recorder({ onResponse }: Props) {
   const [transcripts, setTranscripts] = useState<Message[]>([]);
   const [AIResponses, setAIResponses] = useState<Message[]>([
     {
-      text: "Oh, hey.",
+      text: "Hi there! I'm here to listen without judgment. Whether you're dealing with stress, need advice, or just want to talk things through. I can understand not just your words, but the emotions in your voice too, so feel free to express yourself openly.",
       from: "Assistant",
       id: 0,
       hasAnimated: true,
@@ -412,7 +413,7 @@ export default function Recorder({ onResponse }: Props) {
     setTranscripts([]);
     setAIResponses([
       {
-        text: "Oh, hey.",
+        text: "Hi there! I'm here to listen without judgment. Whether you're dealing with stress, need advice, or just want to talk things through. I can understand not just your words, but the emotions in your voice too, so feel free to express yourself openly.",
         from: "Assistant",
         id: 0,
         hasAnimated: true,
@@ -442,29 +443,45 @@ export default function Recorder({ onResponse }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.3 }}
-          className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50"
+          className="flex flex-col items-center justify-center h-screen bg-black relative overflow-hidden"
         >
+          <div className="absolute inset-0 z-0">
+            <LightRays
+              raysOrigin="top-center"
+              raysColor="#ffffff"
+              raysSpeed={1.2}
+              lightSpread={0.6}
+              rayLength={2.0}
+              followMouse={false}
+              mouseInfluence={0}
+              noiseAmount={0.05}
+              distortion={0.02}
+              fadeDistance={1.2}
+              saturation={0.8}
+            />
+          </div>
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.5 }}
-            className="max-w-2xl px-6"
+            className="max-w-2xl px-6 relative z-[1000]"
           >
             <div className="mb-4">
-              <h1 className="text-6xl font-bold mb-1">
+              <h1 className="text-6xl font-bold mb-1 flex flex-row items-center gap-3 text-white">
                 Echoes
+                <HeartHandshake size={48} />
               </h1>
-              <p className="text-xl text-gray-600 leading-relaxed">
+              <p className="text-xl text-gray-300 leading-7">
                 Experience emotion-aware conversations. Speak naturally and watch as
-                Echoes understands not just your words, but your feelings.
+                Echoes understands not just your words, but your feelings as well.
               </p>
             </div>
 
             <motion.button
               onClick={startCall}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 md:mx-auto rounded-lg bg-black text-white transition-all shadow-lg flex items-center gap-3 mr-auto text-lg font-semibold"
+              className="px-6 py-3.5 md:mx-auto rounded-lg bg-white text-black transition-all shadow-lg flex items-center gap-3 mr-auto text-lg font-semibold
+                hover:px-7 hover:py-4 hover:text-xl 
+              "
             >
               <Phone className="w-6 h-6" />
               Start Call
@@ -485,7 +502,7 @@ export default function Recorder({ onResponse }: Props) {
           <div className="bg-white border-b border-gray-200 p-4">
             <div className="max-w-3xl mx-auto flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-semibold text-gray-900">Echoes</h1>
+                <h1 className="flex flex-row items-center gap-1 text-xl font-semibold text-gray-900">Echoes <HeartHandshake /></h1>
               </div>
             </div>
           </div>

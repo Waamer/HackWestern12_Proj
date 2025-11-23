@@ -4,7 +4,6 @@ import os
 import sys
 import tempfile
 
-# Ensure project root is on sys.path so imports like `emotion_model` resolve
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
@@ -15,7 +14,7 @@ from api_helpers import generate_response_with_gemini, tts_elevenlabs
 app = Flask(__name__)
 CORS(app)
 
-# Lazy-loaded detector to speed startup
+
 _detector = None
 
 def get_detector():
@@ -44,13 +43,11 @@ def analyze():
 
         response = {"emotions": emotions}
 
-        # Optional: if a `do_chat` flag is present, call Gemini placeholder and TTS
         do_chat = request.form.get("do_chat", "false").lower() in ("1", "true", "yes")
         if do_chat:
-            # Use a crude local STT placeholder: if client provided transcript use it
             transcript = request.form.get("transcript", "")
             if not transcript:
-                transcript = ""  # could integrate local STT here
+                transcript = ""
 
             if transcript:
                 prompt = f"User: {transcript}\nAssistant:" 
@@ -71,7 +68,6 @@ def analyze():
 
 @app.route("/api/tts-file/<filename>", methods=["GET"])
 def tts_file(filename):
-    # Serve file from current working directory if exists (used for returned ElevenLabs file)
     path = os.path.abspath(filename)
     if not os.path.exists(path):
         return jsonify({"error": "file not found"}), 404

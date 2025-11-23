@@ -60,17 +60,6 @@ export function Messages({ humanMessages, AIMessages }: MessagesProps) {
     happiness: "bg-yellow-400",
     joy: "bg-yellow-400",
     surprise: "bg-cyan-400",
-    // Additional emotions (if needed)
-    realization: "bg-blue-400",
-    calmness: "bg-green-300",
-    calm: "bg-green-300",
-    disappointment: "bg-purple-500",
-    excitement: "bg-yellow-500",
-    distress: "bg-orange-600",
-    amusement: "bg-orange-300",
-    awkwardness: "bg-gray-500",
-    interest: "bg-indigo-400",
-    love: "bg-pink-500",
   };
 
   return (
