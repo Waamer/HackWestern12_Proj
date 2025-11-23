@@ -34,6 +34,40 @@ export default function App() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    // On page unload, attempt to delete any assistant TTS files created during session.
+    const handler = () => {
+      try {
+        const files = messages
+          .map((m) => m.audio)
+          .filter((a): a is string => !!a);
+        if (files.length === 0) return;
+        try {
+          // Use keepalive fetch to attempt sending cleanup during unload
+          fetch("/api/cleanup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ files }),
+            keepalive: true,
+          });
+        } catch (e) {
+          // Fallback to navigator.sendBeacon if available
+          try {
+            const blob = new Blob([JSON.stringify({ files })], { type: "application/json" });
+            navigator.sendBeacon("/api/cleanup", blob);
+          } catch (ee) {
+            // nothing else we can do
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    };
+
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [messages]);
+
   const handleResponse = (data: any) => {
     // data may be pending transcript or final server response
     if (data && data.pending && data.transcript) {

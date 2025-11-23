@@ -10,7 +10,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-3-pro-preview")
 
 
-def _synthesize_local_reply(transcript: str, emotions: dict | None) -> str:
+def _synthesize_local_reply(transcript: str, emotions: dict | None, history: list | None = None) -> str:
     """Create a short empathetic reply locally when the model returns only reasoning.
 
     This avoids exposing the model's chain-of-thought to the user and guarantees
@@ -74,6 +74,41 @@ def _synthesize_local_reply(transcript: str, emotions: dict | None) -> str:
             "If you'd like, tell me what's going on and I'll listen."
         )
 
+    # Try to answer simple memory questions from recent history, e.g. "where did I get shot"
+    # Look for explicit mentions of body parts or locations in history messages
+    if history and isinstance(history, list):
+        try:
+            keywords = ["knee", "arm", "leg", "head", "chest", "shoulder", "back", "stomach", "left", "right", "thigh", "calf", "ankle"]
+            # search history in reverse for prior user statements mentioning keywords
+            # First, handle direct memory queries like "what was I doing" by
+            # returning the most recent user message if present.
+            mem_triggers = ["what was i doing", "what was i", "do you remember", "where was i", "where did i"]
+            tl = (transcript or "").lower()
+            if any(mt in tl for mt in mem_triggers):
+                # find most recent prior user message with non-empty content
+                for h in reversed(history):
+                    if not isinstance(h, dict):
+                        continue
+                    role = h.get("role", "user")
+                    content = (h.get("content") or "").strip()
+                    if role == "user" and content:
+                        # Return a concise memory-aware reply
+                        return f"Earlier you said: \"{content}\". Does that sound right?"
+
+            # Otherwise, search for body-part/location keywords as before
+            for h in reversed(history):
+                if not isinstance(h, dict):
+                    continue
+                role = h.get("role", "user")
+                content = (h.get("content") or "").lower()
+                if role == "user":
+                    for kw in keywords:
+                        if kw in content:
+                            # Found a likely mention; craft a memory-aware reply
+                            return f"Earlier you mentioned {kw} — you said you were injured there. Do you mean your {kw}? If so, are you okay now?"
+        except Exception:
+            pass
+
     return reply[:400]
 
 def generate_response_with_gemini(
@@ -131,11 +166,18 @@ def generate_response_with_gemini(
     messages = [{"role": "system", "content": system_prompt}]
     if history and isinstance(history, list):
         try:
-            # Cap history to the last 20 entries
-            for h in history[-20:]:
-                role = h.get("role", "user") if isinstance(h, dict) else "user"
-                content = h.get("content", "") if isinstance(h, dict) else str(h)
-                # Normalize role names (openrouter expects 'user'/'assistant')
+            # Include the full session history supplied by the client.
+            # For safety, limit to a large number of most recent entries (e.g. 500)
+            cap = 500
+            for h in history[-cap:]:
+                if not isinstance(h, dict):
+                    continue
+                role = h.get("role", "user")
+                # Normalize roles: only allow 'user' or 'assistant'
+                if role not in ("user", "assistant"):
+                    role = "user"
+                content = h.get("content", "")
+                # Append history messages in chronological order
                 messages.append({"role": role, "content": content})
         except Exception:
             pass

@@ -10,7 +10,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from emotion_model import EmotionDetector
-from api_helpers import generate_response_with_gemini, tts_elevenlabs
+from api_helpers import generate_response_with_gemini, tts_elevenlabs, _synthesize_local_reply
 import json
 
 app = Flask(__name__)
@@ -62,8 +62,15 @@ def analyze():
                 transcript = ""  # could integrate local STT here
 
             if transcript:
-                # Pass transcript, emotions, and optional history to the LM helper.
-                lm_reply = generate_response_with_gemini(transcript, emotions, history=history, max_tokens=256)
+                # If the user asks an explicit memory question, answer locally
+                # from the supplied `history` to avoid relying on the LM.
+                t_lower = transcript.lower()
+                memory_triggers = ["do you remember", "where did i", "where was i", "did i get shot", "where did i get shot", "where was i shot", "remember where"]
+                if any(tok in t_lower for tok in memory_triggers):
+                    lm_reply = _synthesize_local_reply(transcript, emotions, history=history)
+                else:
+                    # Pass transcript, emotions, and optional history to the LM helper.
+                    lm_reply = generate_response_with_gemini(transcript, emotions, history=history, max_tokens=256)
                 response["transcript"] = transcript
                 response["reply_text"] = lm_reply
                 tts_path = tts_elevenlabs(lm_reply) if lm_reply else None
@@ -73,8 +80,14 @@ def analyze():
 
         return jsonify(response)
     finally:
+        # Remove the temporary uploaded audio file as it's no longer needed
         try:
             tmp.close()
+        except Exception:
+            pass
+        try:
+            if os.path.exists(tmp.name):
+                os.remove(tmp.name)
         except Exception:
             pass
 
@@ -91,3 +104,38 @@ def tts_file(filename):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+@app.route("/api/cleanup", methods=["POST"])
+def cleanup_files():
+    """Delete temporary audio files by basename supplied in JSON {"files": ["a.wav"]}.
+
+    Only allows basenames (no paths) and deletes files from project root for safety.
+    """
+    try:
+        data = request.get_json(force=True)
+        files = data.get("files") if isinstance(data, dict) else None
+        if not files or not isinstance(files, list):
+            return jsonify({"deleted": [], "error": "invalid payload"}), 400
+
+        deleted = []
+        for name in files:
+            if not isinstance(name, str):
+                continue
+            # Prevent path traversal
+            if os.path.basename(name) != name:
+                continue
+            path = os.path.abspath(os.path.join(ROOT, name))
+            # Ensure file is inside project root
+            if not path.startswith(os.path.abspath(ROOT)):
+                continue
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+                    deleted.append(name)
+            except Exception:
+                pass
+
+        return jsonify({"deleted": deleted})
+    except Exception as e:
+        return jsonify({"deleted": [], "error": str(e)}), 500

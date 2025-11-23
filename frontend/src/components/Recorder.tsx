@@ -58,6 +58,7 @@ export default function Recorder({ onResponse, history }: Props) {
 
   const [transcript, setTranscript] = useState("");
   const transcriptRef = useRef("");
+  const pendingTTSRef = useRef<string[]>([]);
   const recognitionRef = useRef<any>(null);
   const recognitionPromiseResolver = useRef<((value: unknown) => void) | null>(null);
   const isRecordingRef = useRef(false); // Track recording state for auto-restart
@@ -241,7 +242,8 @@ export default function Recorder({ onResponse, history }: Props) {
     fd.append("transcript", textToSend);
     // Attach recent history to help LM keep context (JSON string)
     try {
-      const hist = (history || []).slice(-20).map((m) => ({ role: m.role, content: m.text }));
+      // Send the full session history so the backend can remember everything
+      const hist = (history || []).map((m) => ({ role: m.role, content: m.text }));
       fd.append("history", JSON.stringify(hist));
     } catch (e) {
       console.error("Failed to attach history:", e);
@@ -269,8 +271,54 @@ export default function Recorder({ onResponse, history }: Props) {
       console.log("Server response:", data);
       // Server returns emotions and optionally reply_text; forward to app
       onResponse(data);
+      // If server returned a TTS file, schedule deletion after a short delay
+      try {
+        const tts = data?.reply_audio_path;
+        if (tts) {
+          // track pending files for immediate cleanup on stop/abort
+          pendingTTSRef.current.push(tts);
+          setTimeout(() => {
+            try {
+              fetch("/api/cleanup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ files: [tts] }),
+                keepalive: true,
+              }).catch((e) => console.warn("Cleanup failed:", e));
+            } catch (e) {
+              console.warn("Cleanup scheduling failed:", e);
+            }
+          }, 10000); // 10s delay to allow playback
+        }
+      } catch (e) {
+        console.error("Error scheduling cleanup:", e);
+      }
     } catch (err) {
       console.error("Upload error", err);
+      // If the upload was aborted, attempt to cleanup any pending TTS files
+      try {
+        if ((err as any)?.name === "AbortError" || (window as any)._aborted) {
+          const files = pendingTTSRef.current.slice();
+          if (files.length > 0) {
+            try {
+              fetch("/api/cleanup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ files }),
+                keepalive: true,
+              });
+            } catch (e) {
+              try {
+                const blob = new Blob([JSON.stringify({ files })], { type: "application/json" });
+                navigator.sendBeacon("/api/cleanup", blob);
+              } catch (_) {}
+            }
+            pendingTTSRef.current = [];
+          }
+        }
+      } catch (cleanupErr) {
+        console.error("Cleanup during abort failed:", cleanupErr);
+      }
     }
 
     // close audio context
@@ -283,7 +331,61 @@ export default function Recorder({ onResponse, history }: Props) {
     sourceRef.current = null;
     processorRef.current = null;
     buffersRef.current = [];
+
+    // Always attempt an immediate cleanup of any pending TTS files when stopping
+    try {
+      const files = pendingTTSRef.current.slice();
+      if (files.length > 0) {
+        fetch("/api/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ files }),
+          keepalive: true,
+        }).catch((e) => {
+          // fallback to sendBeacon
+          try {
+            const blob = new Blob([JSON.stringify({ files })], { type: "application/json" });
+            navigator.sendBeacon("/api/cleanup", blob);
+          } catch (ee) {
+            console.warn("Immediate cleanup failed:", ee);
+          }
+        });
+        pendingTTSRef.current = [];
+      }
+    } catch (e) {
+      console.warn("Failed to run immediate cleanup on stop:", e);
+    }
   };
+
+  // Ensure we clean up when the component unmounts as well
+  useEffect(() => {
+    return () => {
+      try {
+        // Abort any ongoing upload
+        const controller = (window as any)._currentAbort as AbortController | undefined;
+        if (controller) {
+          try {
+            controller.abort();
+          } catch (_) {}
+        }
+
+        const files = pendingTTSRef.current.slice();
+        if (files.length > 0) {
+          try {
+            const blob = new Blob([JSON.stringify({ files })], { type: "application/json" });
+            // Use sendBeacon for unmount to maximize chance of delivery
+            navigator.sendBeacon("/api/cleanup", blob);
+            pendingTTSRef.current = [];
+          } catch (e) {
+            console.warn("Unmount cleanup failed:", e);
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="recorder">

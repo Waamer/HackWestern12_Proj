@@ -17,7 +17,7 @@ url = 'http://127.0.0.1:5000/api/analyze'
 print('Posting', wav_path, 'to', url)
 try:
     with open(wav_path, 'rb') as f:
-        files = {'file': ('tmp_smoke.wav', f, 'audio/wav')}
+        files = {'audio': ('tmp_smoke.wav', f, 'audio/wav')}
         resp = requests.post(url, files=files, timeout=300)
     print('Status code:', resp.status_code)
     try:
