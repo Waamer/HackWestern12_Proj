@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 
 type Props = {
   onResponse: (data: any) => void;
+  history: Array<{ id: string; role: string; text: string }>; // last messages from App
 };
 
 function floatTo16BitPCM(float32Array: Float32Array) {
@@ -48,7 +49,7 @@ function writeString(view: DataView, offset: number, string: string) {
   }
 }
 
-export default function Recorder({ onResponse }: Props) {
+export default function Recorder({ onResponse, history }: Props) {
   const [recording, setRecording] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -238,14 +239,35 @@ export default function Recorder({ onResponse }: Props) {
     const textToSend = transcriptRef.current.trim();
     console.log("Sending transcript:", textToSend);
     fd.append("transcript", textToSend);
+    // Attach recent history to help LM keep context (JSON string)
+    try {
+      const hist = (history || []).slice(-20).map((m) => ({ role: m.role, content: m.text }));
+      fd.append("history", JSON.stringify(hist));
+    } catch (e) {
+      console.error("Failed to attach history:", e);
+    }
+
+    // Immediately notify the app with the transcript so it can show a speech
+    // bubble while the server computes emotions (this is the "speech bubble" step).
+    try {
+      onResponse({ transcript: textToSend, emotions: null, pending: true });
+    } catch (e) {
+      console.error("onResponse callback error (pre-send):", e);
+    }
 
     try {
+      const controller = new AbortController();
+      // Save controller so unload/stop can abort
+      (window as any)._currentAbort = controller;
+
       const res = await fetch("http://localhost:5000/api/analyze", {
         method: "POST",
         body: fd,
+        signal: controller.signal,
       });
       const data = await res.json();
       console.log("Server response:", data);
+      // Server returns emotions and optionally reply_text; forward to app
       onResponse(data);
     } catch (err) {
       console.error("Upload error", err);

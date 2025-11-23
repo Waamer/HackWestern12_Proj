@@ -11,6 +11,7 @@ if ROOT not in sys.path:
 
 from emotion_model import EmotionDetector
 from api_helpers import generate_response_with_gemini, tts_elevenlabs
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -46,6 +47,14 @@ def analyze():
 
         # Optional: if a `do_chat` flag is present, call Gemini placeholder and TTS
         do_chat = request.form.get("do_chat", "false").lower() in ("1", "true", "yes")
+        # Optional history (JSON string) containing previous messages
+        history_raw = request.form.get("history")
+        history = None
+        if history_raw:
+            try:
+                history = json.loads(history_raw)
+            except Exception:
+                history = None
         if do_chat:
             # Use a crude local STT placeholder: if client provided transcript use it
             transcript = request.form.get("transcript", "")
@@ -53,8 +62,8 @@ def analyze():
                 transcript = ""  # could integrate local STT here
 
             if transcript:
-                prompt = f"User: {transcript}\nAssistant:" 
-                lm_reply = generate_response_with_gemini(prompt)
+                # Pass transcript, emotions, and optional history to the LM helper.
+                lm_reply = generate_response_with_gemini(transcript, emotions, history=history, max_tokens=256)
                 response["transcript"] = transcript
                 response["reply_text"] = lm_reply
                 tts_path = tts_elevenlabs(lm_reply) if lm_reply else None
@@ -72,7 +81,9 @@ def analyze():
 @app.route("/api/tts-file/<filename>", methods=["GET"])
 def tts_file(filename):
     # Serve file from current working directory if exists (used for returned ElevenLabs file)
-    path = os.path.abspath(filename)
+    # Build path relative to project root so files saved by `api_helpers.tts_elevenlabs`
+    # (which saves into the project root) are served correctly by basename.
+    path = os.path.abspath(os.path.join(ROOT, filename))
     if not os.path.exists(path):
         return jsonify({"error": "file not found"}), 404
     return send_file(path, mimetype="audio/wav")
