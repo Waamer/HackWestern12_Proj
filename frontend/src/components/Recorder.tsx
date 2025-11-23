@@ -15,6 +15,7 @@ interface Message {
 
 type Props = {
   onResponse: (data: any) => void;
+  history?: Message[];
 };
 
 function floatTo16BitPCM(float32Array: Float32Array) {
@@ -61,7 +62,7 @@ function writeString(view: DataView, offset: number, string: string) {
   }
 }
 
-export default function Recorder({ onResponse }: Props) {
+export default function Recorder({ onResponse, history = [] }: Props) {
   const [isCallActive, setIsCallActive] = useState(false);
   const [recording, setRecording] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -299,6 +300,24 @@ export default function Recorder({ onResponse }: Props) {
       }
       
       fd.append("transcript", textToSend);
+
+      // Build conversation history for the backend
+      // Convert combined messages (transcripts + AIResponses) to {role, content} format
+      const combinedHistory = [...transcripts, ...AIResponses]
+        .sort((a, b) => a.id - b.id)
+        .map((msg) => ({
+          role: msg.from === "Human" ? "user" : "assistant",
+          content: msg.text,
+        }));
+      
+      // Include external history prop if provided
+      const fullHistory = history.length > 0 
+        ? [...history.map(h => ({ role: h.from === "Human" ? "user" : "assistant", content: h.text })), ...combinedHistory]
+        : combinedHistory;
+
+      if (fullHistory.length > 0) {
+        fd.append("history", JSON.stringify(fullHistory));
+      }
 
       const res = await fetch("http://localhost:5000/api/analyze", {
         method: "POST",
