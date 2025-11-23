@@ -10,7 +10,15 @@ class EmotionDetector:
     def __init__(self, device=None):
         print("[INFO] Loading Whisper Emotion Model...")
 
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        # Force using CUDA by default per user request. If CUDA is not
+        # available, raise an error so the deployment fails early instead
+        # of silently falling back to CPU.
+        self.device = device or "cuda"
+        if not torch.cuda.is_available() and self.device == "cuda":
+            raise RuntimeError(
+                "[ERROR] CUDA was requested but is not available on this system.\n"
+                "Install CUDA drivers and a CUDA-enabled PyTorch wheel, or set device='cpu'."
+            )
         print(f"[INFO] Using device: {self.device}")
 
         self.model = AutoModelForAudioClassification.from_pretrained(MODEL_ID).to(self.device)
