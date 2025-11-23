@@ -1,46 +1,92 @@
-# Realtime Emotion + Chat (Flask backend + Vite React frontend)
-
-This repository runs a local speech-emotion recognition pipeline (Hugging Face Whisper-large-v3 fine-tuned classifier) and a simple frontend to record audio and send it to the backend. The backend can optionally call a language model (Gemini placeholder) and ElevenLabs TTS.
-
-This README shows how to reproduce the environment on a Windows laptop with an NVIDIA RTX GPU (CUDA). All commands below are written for PowerShell.
-
-**Important**: this repo stores code only; model weights are downloaded from Hugging Face at runtime. Large model files (weights) are excluded by `.gitignore`.
+<div align="center">
+  <hr>
+  
+  <h1>🎙️ Echoes</h1>
+  
+  <hr>
+  <h3 align="center">
+    Where your voice finds understanding, and understanding finds you. <br><br>
+    <img src="https://img.shields.io/badge/Powered%20by-Whisper-blue" height="24">
+    <img src="https://img.shields.io/badge/Powered%20by-Gemini-orange" height="24">
+    <img src="https://img.shields.io/badge/Powered%20by-ElevenLabs-purple" height="24">
+    <img src="https://img.shields.io/badge/Built%20with-React-cyan" height="24">
+    <img src="https://img.shields.io/badge/Version-1.0-darkblue" height="24">
+  </h3>
+</div>
 
 ---
 
-## Prerequisites
+## 📌 Overview
 
-- Windows with an NVIDIA RTX GPU and matching NVIDIA driver installed.
-- Python 3.10+ (3.11/3.12 work but test locally).
-- Git
-- Node.js (v18+ recommended) and npm
-- PowerShell (the default Windows shell)
+**Echoes** is a real-time emotion-aware mental health companion that analyzes both **what you say** and **how you say it** to provide empathetic, context-aware support. The system combines speech-to-text transcription, emotion detection from voice patterns, AI-powered conversational therapy, and natural voice responses to create a compassionate digital therapist that truly listens.
 
-Optional tools:
-- `git lfs` (recommended if you plan to commit large model files)
+Unlike text-only chatbots, Echoes captures emotional nuance in your voice—detecting stress, fear, sadness even when words seem neutral—and responds with understanding tailored to both your words and your feelings.
 
-Check NVIDIA/CUDA availability:
+---
+
+## ✨ Features
+
+- 🎤 **Real-time Voice Analysis** - GPU-accelerated emotion detection from voice tone and patterns
+- 🧠 **7 Emotion Recognition** - Detects happy, sad, angry, fearful, disgusted, surprised, and neutral states
+- 💬 **Context-Aware Responses** - Prioritizes what you say with emotion as supplementary context
+- 🎯 **Three Response Modes**:
+  - **Empathetic Listening** - Validates feelings and explores concerns
+  - **Actionable Advice** - Provides 2-4 specific steps tailored to your situation
+  - **Conversational Memory** - Recalls past discussions and context
+- 🔄 **Mismatch Detection** - Identifies when emotions and words don't align
+- 🗣️ **Text-to-Speech Responses** - Natural voice replies via ElevenLabs
+- 💾 **Persistent History** - Remembers conversations across sessions
+- ⚡ **Low Latency** - CUDA-optimized processing for near-instant responses
+
+---
+
+## 🎯 Why EmotiVoice?
+
+### The Mental Health Crisis
+- **1 in 5 adults** experience mental illness annually
+- **Average wait time** for therapy: 2-3 months
+- **Cost barrier**: $100-250 per session without insurance
+- **Stigma** prevents many from seeking help
+
+### How EmotiVoice Helps
+- ✅ **Immediate 24/7 support** - No waiting lists or appointments
+- ✅ **Emotion-aware responses** - Understands stress/fear in your voice even when you say "I'm fine"
+- ✅ **Judgment-free space** - Complete privacy and confidentiality
+- ✅ **Actionable guidance** - Practical advice tailored to your unique situation
+- ✅ **Crisis detection** - Recognizes urgent situations and recommends professional help
+
+> **Note:** EmotiVoice is a supportive companion, not a replacement for professional therapy. For serious mental health concerns, please consult a licensed professional.
+
+
+---
+
+## 📦 Installation
+
+### Prerequisites
+
+- **Windows** with NVIDIA RTX GPU and drivers installed
+- **Python 3.10+** (3.11/3.12 recommended)
+- **Node.js v18+** and npm
+- **Git**
+- **PowerShell** (default Windows shell)
+
+### Verify GPU Setup
 
 ```powershell
-# Shows GPU and driver; if not present, you must install NVIDIA drivers
+# Shows GPU and driver
 nvidia-smi
 ```
 
-If `nvidia-smi` is not found, install NVIDIA drivers from the NVIDIA website. You do not need full CUDA toolkit installed - only a matching driver is required for the PyTorch wheel below.
+If `nvidia-smi` is not found, install NVIDIA drivers from the NVIDIA website. You do not need full CUDA toolkit installed - only a matching driver is required for PyTorch.
 
-Determine your CUDA-compatible PyTorch wheel
-- This README assumes CUDA 12.1 and provides commands for `torch==2.5.1+cu121`. If your machine uses another CUDA version (e.g., cu118), adjust accordingly. See https://pytorch.org/ for the exact install command for your platform.
-
----
-
-## Clone repository
+### Clone Repository
 
 ```powershell
-git clone <your-repo-url>
-cd "C:\Users\<you>\Documents\Western\Year 4\Hackathon\TEST"
+git clone https://github.com/Waamer/HackWestern12_Proj.git
+cd HackWestern12_Proj
 ```
 
-## Python environment (recommended)
+### Backend Setup
 
 Create and activate a virtual environment (PowerShell):
 
