@@ -61,8 +61,16 @@ def analyze():
         if history_raw:
             try:
                 history = json.loads(history_raw)
-            except Exception:
+                print(f"[DEBUG] Received conversation history with {len(history)} messages:")
+                for i, msg in enumerate(history[-5:]):  # Print last 5 messages
+                    role = msg.get("role", "unknown")
+                    content = msg.get("content", "")[:50]
+                    print(f"  [{i}] {role}: {content}...")
+            except Exception as e:
+                print(f"[DEBUG] Failed to parse history: {e}")
                 history = None
+        else:
+            print("[DEBUG] No history received from frontend")
         if do_chat:
             # Use a crude local STT placeholder: if client provided transcript use it
             transcript = request.form.get("transcript", "")
@@ -70,15 +78,9 @@ def analyze():
                 transcript = ""  # could integrate local STT here
 
             if transcript:
-                # If the user asks an explicit memory question, answer locally
-                # from the supplied `history` to avoid relying on the LM.
-                t_lower = transcript.lower()
-                memory_triggers = ["do you remember", "where did i", "where was i", "did i get shot", "where did i get shot", "where was i shot", "remember where"]
-                if any(tok in t_lower for tok in memory_triggers):
-                    lm_reply = _synthesize_local_reply(transcript, emotions, history=history)
-                else:
-                    # Pass transcript, emotions, and optional history to the LM helper.
-                    lm_reply = generate_response_with_gemini(transcript, emotions, history=history, max_tokens=256)
+                # Always pass to the AI model - it now has specialized handling for
+                # memory questions, advice requests, and normal conversation
+                lm_reply = generate_response_with_gemini(transcript, emotions, history=history, max_tokens=256)
                 response["transcript"] = transcript
                 response["reply_text"] = lm_reply
                 tts_path = tts_elevenlabs(lm_reply) if lm_reply else None

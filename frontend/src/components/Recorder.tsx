@@ -303,7 +303,9 @@ export default function Recorder({ onResponse, history = [] }: Props) {
 
       // Build conversation history for the backend
       // Convert combined messages (transcripts + AIResponses) to {role, content} format
+      // Filter out loading messages and messages without text
       const combinedHistory = [...transcripts, ...AIResponses]
+        .filter((msg) => msg.text && msg.text !== "Loading" && msg.hasAnimated)
         .sort((a, b) => a.id - b.id)
         .map((msg) => ({
           role: msg.from === "Human" ? "user" : "assistant",
@@ -314,6 +316,8 @@ export default function Recorder({ onResponse, history = [] }: Props) {
       const fullHistory = history.length > 0 
         ? [...history.map(h => ({ role: h.from === "Human" ? "user" : "assistant", content: h.text })), ...combinedHistory]
         : combinedHistory;
+
+      console.log("Sending conversation history to backend:", fullHistory);
 
       if (fullHistory.length > 0) {
         fd.append("history", JSON.stringify(fullHistory));
