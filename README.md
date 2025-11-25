@@ -57,6 +57,11 @@ Unlike text-only chatbots, Echoes captures emotional nuance in your voice—dete
 
 > **Note:** Echoes is a supportive companion, not a replacement for professional therapy. For serious mental health concerns, please consult a licensed professional.
 
+---
+## Screenshots
+
+![gallery](https://github.com/user-attachments/assets/77de3cab-8d09-4648-8cd0-5487e78328a1)
+![gallery](https://github.com/user-attachments/assets/391f8851-d7be-4750-93b2-96c6663d018d)
 
 ---
 
